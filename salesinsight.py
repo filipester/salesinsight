@@ -1,5 +1,7 @@
+from collections import defaultdict
 import csv
 import random
+import re
 from datetime import datetime, timedelta
 
 def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
@@ -62,7 +64,6 @@ def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
 
     print(f"Dataset gerado com {n_registros} registros em {caminho_csv}.")
 
-# gerar_dataset_vendas()
 
 def carregar_dataset(caminho_csv):
     """Le o CSV e retorna uma lista de dicionarios (um por registro)."""
@@ -91,6 +92,161 @@ def inspecionar_dados(registros):
         print(linha)
     return registros
 
-dataset = carregar_dataset('vendas.csv')
+def limpar_dados(registros):
+    """
+    Limpa e trata a lista de registros de vendas.
+    Retorna: (registros_limpos, relatorio), onde relatorio e um dicionario
+    com as contagens de registros iniciais, removidos e finais.
+    """
+    relatorio = {"iniciais": len(registros), "removidos_data": 0,
+                 "removidos_nulos": 0, "finais": 0}
+    padrao_cliente = re.compile(r"^Cliente_\d{3}$", flags=re.IGNORECASE)
+    limpos = []
 
+    for linha in registros:
+    # 1. remover espacos extras nas colunas de texto
+        for chave in ("cliente", "produto", "categoria", "regiao"):
+            linha[chave] = linha[chave].strip()
+
+    # 2. converter data_venda e descartar datas invalidas
+        try:
+            linha["data_venda"] = datetime.strptime(linha["data_venda"], "%Y-%m-%d")
+        except ValueError:
+            relatorio["removidos_data"] += 1
+            continue
+
+    # 3. descartar nulos em quantidade e preco_unitario
+        if linha["quantidade"] == "" or linha["preco_unitario"] == "":
+            relatorio["removidos_nulos"] += 1
+            continue
+
+    # 4. ajustar os tipos numericos
+        linha["quantidade"] = int(float(linha["quantidade"]))
+        linha["preco_unitario"] = float(linha["preco_unitario"])
+
+    # 5. padronizar o nome do cliente com re.sub()
+        nome_limpo = re.sub(r"[^A-Za-z0-9_]", "", linha["cliente"])
+        linha["cliente"] = nome_limpo
+        linha["cliente_fora_do_padrao"] = padrao_cliente.match(nome_limpo) is None
+        limpos.append(linha)
+
+    # 6. montar e imprimir o relatorio de limpeza
+    relatorio["finais"] = len(limpos)
+    print("\n=== RELATORIO DE LIMPEZA ===")
+    print(relatorio)
+    return limpos, relatorio
+
+def criar_colunas_derivadas(registros):
+    """
+    Cria colunas derivadas a partir do dataset ja limpo: receita_total, mes,
+    mes_nome, trimestre, ano e faixa_receita_item.
+    Retorna a mesma lista de registros, com os campos novos adicionados.
+    """
+    nomes_meses = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Marco", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
+    }
+
+    for linha in registros:
+        # cada campo derivado e calculado registro por registro
+        linha["receita_total"] = linha["quantidade"] * linha["preco_unitario"]
+
+        data_venda = linha["data_venda"]
+        linha["mes"] = data_venda.month
+        linha["mes_nome"] = nomes_meses[data_venda.month]
+        linha["ano"] = data_venda.year
+
+        # trimestre calculado a partir do mes com if/elif/else
+        mes = data_venda.month
+        if mes <= 3:
+            linha["trimestre"] = "Q1"
+        elif mes <= 6:
+            linha["trimestre"] = "Q2"
+        elif mes <= 9:
+            linha["trimestre"] = "Q3"
+        else:
+            linha["trimestre"] = "Q4"
+
+        # classificacao condicional da receita do registro
+        receita = linha["receita_total"]
+        if receita < 500:
+            linha["faixa_receita_item"] = "Baixo Valor"
+        elif receita < 5000:
+            linha["faixa_receita_item"] = "Medio Valor"
+        else:
+            linha["faixa_receita_item"] = "Alto Valor"
+
+    return registros
+
+def calcular_metricas(registros):
+    """ 
+    Calcula as metricas agregadas da lista de registros. 
+    Retorna um dicionario no formato {nome_da_metrica: lista_de_linhas}. 
+    Chaves minimas: por_mes, top_produtos, por_categoria, por_regiao. 
+    """ 
+    metricas = {}
+    acumulado = defaultdict(lambda: {"receita_total": 0, "quantidade": 0, "n_vendas": 0})
+    # use dicionarios (ou defaultdict) para acumular receita_total, 
+    # quantidade e numero de vendas por mes, produto, categoria e 
+    # regiao; depois converta cada dicionario em uma lista ordenada 
+    # de registros (dict.items() + sorted()) 
+    for linha in registros:
+        mes = linha["mes"]
+        acumulado[mes]["receita_total"] += linha["receita_total"]
+        acumulado[mes]["quantidade"] += linha["quantidade"]
+        acumulado[mes]["n_vendas"] += 1
+    
+    por_mes = [{"mes": mes, **dados} for mes, dados in sorted(acumulado.items())]
+
+    receita_por_produto = defaultdict(float)
+    for linha in registros:
+        receita_por_produto[linha["produto"]] += linha["receita_total"]
+    top_produtos = [
+        {"produto": produto, "receita_total": receita}
+        for produto, receita in sorted(
+            receita_por_produto.items(), key=lambda item: item[1], reverse=True
+        )
+    ][:5]
+
+    receita_por_categoria = defaultdict(float)
+    for linha in registros:
+        receita_por_categoria[linha["categoria"]] += linha["receita_total"]
+    por_categoria = [
+        {"categoria": categoria, "receita_total": receita}
+        for categoria, receita in sorted(
+            receita_por_categoria.items(), key=lambda item: item[1], reverse=True
+        )
+    ]
+
+    acumulado_regiao = defaultdict(lambda: {"receita_total": 0, "n_vendas": 0})
+    for linha in registros:
+        regiao = linha["regiao"]
+        acumulado_regiao[regiao]["receita_total"] += linha["receita_total"]
+        acumulado_regiao[regiao]["n_vendas"] += 1
+    por_regiao = [
+        {
+            "regiao": regiao,
+            "receita_total": dados["receita_total"],
+            "ticket_medio": dados["receita_total"] / dados["n_vendas"],
+        }
+        for regiao, dados in sorted(acumulado_regiao.items())
+    ]
+
+    metricas["por_mes"] = por_mes
+    metricas["top_produtos"] = top_produtos
+    metricas["por_categoria"] = por_categoria
+    metricas["por_regiao"] = por_regiao
+
+    return metricas
+
+gerar_dataset_vendas()
+dataset = carregar_dataset('vendas.csv')
 inspecionar_dados(dataset)
+
+dados_limpo, relatorio_limpeza = limpar_dados(dataset)
+
+dados = criar_colunas_derivadas(dados_limpo)
+
+metricas = calcular_metricas(dados)
+print(metricas)
