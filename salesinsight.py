@@ -240,6 +240,55 @@ def calcular_metricas(registros):
 
     return metricas
 
+def imprime_metrica(metricas):
+    """Exibe cada bloco de metricas no console em formato legivel."""
+    for metrica, linhas in metricas.items():
+        titulo = metrica.upper().replace("_", " ")
+        print(f"\n=== {titulo} ===")
+        for linha in linhas:
+            pares = []
+            for chave, valor in linha.items():
+                if isinstance(valor, float):
+                    valor = round(valor, 2)
+                pares.append(f"{chave}: {valor}")
+            print(", ".join(pares))
+
+def segmentar_clientes(registros):
+    """
+    Agrupa por cliente, soma a receita e classifica em
+    Bronze / Prata / Ouro usando uma funcao lambda.
+    Retorna uma lista de dicionarios: cliente, total_gasto, segmento.
+    """
+    classificar = lambda total: (
+        "Ouro" if total > 15000 else "Prata" if total >= 5000 else "Bronze"
+    )
+
+    total_por_cliente = {}
+    for linha in registros:
+        total_por_cliente[linha["cliente"]] = (
+            total_por_cliente.get(linha["cliente"], 0) + linha["receita_total"]
+        )
+
+    clientes = [
+        {"cliente": nome, "total_gasto": total, "segmento": classificar(total)}
+        for nome, total in total_por_cliente.items()
+    ]
+
+    top_10 = sorted(clientes, key=lambda c: c["total_gasto"], reverse=True)[:10]
+    distribuicao = defaultdict(int)
+    for cliente in clientes:
+        distribuicao[cliente["segmento"]] += 1
+
+    print("\n=== TOP 10 CLIENTES ===")
+    for cliente in top_10:
+        print(f"{cliente['cliente']}: R$ {round(cliente['total_gasto'], 2)} ({cliente['segmento']})")
+
+    print("\n=== DISTRIBUICAO POR SEGMENTO ===")
+    for segmento, contagem in distribuicao.items():
+        print(f"{segmento}: {contagem}")
+
+    return clientes
+
 gerar_dataset_vendas()
 dataset = carregar_dataset('vendas.csv')
 inspecionar_dados(dataset)
@@ -249,4 +298,6 @@ dados_limpo, relatorio_limpeza = limpar_dados(dataset)
 dados = criar_colunas_derivadas(dados_limpo)
 
 metricas = calcular_metricas(dados)
-print(metricas)
+imprime_metrica(metricas)
+
+clientes = segmentar_clientes(dados)
