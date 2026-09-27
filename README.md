@@ -61,9 +61,43 @@ salesinsight-py/
 
 ## Decisões técnicas
 
-<!-- Preencher com pelo menos uma decisão relevante, por exemplo: por que
-descartar registros invalidos em vez de tentar corrigi-los, ou por que usar
-dicionarios para acumular metricas em vez de repetir calculos. -->
+**Descartar registros inválidos em vez de tentar corrigi-los.** Na limpeza
+(`limpar_dados`), datas que não convertem e valores ausentes em quantidade ou
+preço unitário fazem o registro ser removido, não corrigido. Nesse escopo do
+projeto não se usa nenhuma técnica de imputação de valores ausentes (isso só
+entra em módulos futuros), então inventar uma data ou um preço para preencher
+o buraco introduziria um dado falso nas métricas agregadas mais à frente.
+Remover a linha inteira é a opção mais simples e mais honesta com o que
+realmente se sabe sobre aquela venda.
+
+**Calcular o trimestre com uma cadeia se/senão explícita.** A coluna
+`trimestre` é obtida com `if mes <= 3 / elif mes <= 6 / elif mes <= 9 / else`,
+em vez de uma fórmula matemática mais direta. A ideia é deixar a lógica
+condicional visível no código, já que demonstrar o uso de `if/elif/else` é um
+dos pontos avaliados do projeto.
+
+**Usar `defaultdict` para acumular as métricas.** Em `calcular_metricas`, cada
+agrupamento (por mês, produto, categoria e região) soma valores num
+`defaultdict`. Isso evita ter que checar se a chave já existe antes de somar
+nela, o que deixaria o código repetitivo nos quatro agrupamentos.
+
+**Só arredondar valores que são `float` ao exibir no console.** A função
+`imprime_metrica` verifica o tipo de cada valor com `isinstance(valor, float)`
+antes de aplicar `round(valor, 2)`. Os blocos de métricas misturam texto
+(nome de produto, categoria, região) com números, e arredondar um texto
+quebraria o programa, então o arredondamento só se aplica onde faz sentido.
+
+**Não gerar o dataset de novo se ele já existir.** O `main()` só chama
+`gerar_dataset_vendas()` quando `vendas.csv` ainda não existe
+(`if not os.path.exists(...)`). Como a geração usa uma seed fixa, rodar de
+novo sem essa checagem recriaria sempre o mesmo arquivo à toa, e sobrescreveria
+qualquer ajuste manual feito no CSV entre uma execução e outra.
+
+**O que entra em `estatisticas_gerais.json`.** O enunciado pede a exportação
+de estatísticas gerais em JSON, mas não define quais. Escolhi calcular o
+total de vendas, a receita total, a receita média por venda e a quantidade de
+vendas individuais com receita acima dessa média — essa última é justamente
+uma das perguntas do desafio que nenhum outro requisito cobria.
 
 ## Ferramentas utilizadas
 

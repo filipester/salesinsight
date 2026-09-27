@@ -1,5 +1,7 @@
 from collections import defaultdict
 import csv
+import json
+import os
 import random
 import re
 from datetime import datetime, timedelta
@@ -289,15 +291,91 @@ def segmentar_clientes(registros):
 
     return clientes
 
-gerar_dataset_vendas()
-dataset = carregar_dataset('vendas.csv')
-inspecionar_dados(dataset)
+def processar_coluna(registros, coluna, funcao_transformacao, nome_saida=None):
+    """
+    Aplica uma funcao de transformacao a um campo de cada registro.
+    Demonstra o uso de funcoes como argumento (funcao de ordem superior).
+    """
+    nome_saida = nome_saida or f"{coluna}_transformado"
+    for linha in registros:
+        linha[nome_saida] = funcao_transformacao(linha[coluna])
+    return registros
 
-dados_limpo, relatorio_limpeza = limpar_dados(dataset)
+def calcular_estatisticas_gerais(registros):
+    """
+    Calcula estatisticas gerais do dataset: total de vendas, receita total,
+    receita media por venda e quantas vendas individuais ficaram com receita
+    acima dessa media.
+    Retorna um dicionario serializavel em JSON.
+    """
+    total_vendas = len(registros)
+    receita_total_geral = sum(linha["receita_total"] for linha in registros)
+    receita_media_por_venda = receita_total_geral / total_vendas
+    vendas_acima_da_media = sum(
+        1 for linha in registros if linha["receita_total"] > receita_media_por_venda
+    )
+    return {
+        "total_vendas": total_vendas,
+        "receita_total_geral": receita_total_geral,
+        "receita_media_por_venda": receita_media_por_venda,
+        "vendas_acima_da_media": vendas_acima_da_media,
+    }
 
-dados = criar_colunas_derivadas(dados_limpo)
+def exportar_resultados(metricas, clientes, estatisticas):
+    """Exporta os resultados do projeto em CSV e JSON."""
+    os.makedirs("outputs", exist_ok=True)
 
-metricas = calcular_metricas(dados)
-imprime_metrica(metricas)
+    with open("outputs/metricas_por_mes.csv", "w", newline="",
+              encoding="utf-8-sig") as f:
+        escritor = csv.DictWriter(f, fieldnames=metricas["por_mes"][0].keys())
+        escritor.writeheader()
+        escritor.writerows(metricas["por_mes"])
 
-clientes = segmentar_clientes(dados)
+    with open("outputs/segmentacao_clientes.csv", "w", newline="",
+              encoding="utf-8-sig") as f:
+        escritor = csv.DictWriter(f, fieldnames=clientes[0].keys())
+        escritor.writeheader()
+        escritor.writerows(clientes)
+
+    serializavel = {chave: round(float(valor), 2)
+                     for chave, valor in estatisticas.items()}
+    caminho = "outputs/estatisticas_gerais.json"
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(serializavel, f, indent=4, ensure_ascii=False)
+
+    # leitura de volta para confirmar a escrita
+    with open(caminho, "r", encoding="utf-8") as f:
+        conferencia = json.load(f)
+    print(f"\nJSON gravado e lido: {conferencia}")
+
+def main():
+    """Executa o fluxo completo do SalesInsight PY."""
+    if not os.path.exists("vendas.csv"):
+        gerar_dataset_vendas()
+    dataset = carregar_dataset('vendas.csv')
+    inspecionar_dados(dataset)
+
+    dados_limpo, relatorio_limpeza = limpar_dados(dataset)
+
+    dados = criar_colunas_derivadas(dados_limpo)
+
+    metricas = calcular_metricas(dados)
+    imprime_metrica(metricas)
+
+    clientes = segmentar_clientes(dados)
+
+    dados = processar_coluna(dados, "receita_total",
+                              lambda x: round(x / 1000, 2),
+                              nome_saida="receita_em_milhares")
+
+    dados = processar_coluna(dados, "quantidade",
+                              lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
+                              nome_saida="perfil_volume")
+
+    estatisticas = calcular_estatisticas_gerais(dados)
+    exportar_resultados(metricas, clientes, estatisticas)
+
+    print("\n[CONCLUIDO] Fluxo finalizado com sucesso.")
+
+if __name__ == "__main__":
+    main()
