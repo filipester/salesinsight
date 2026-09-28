@@ -333,10 +333,14 @@ def calcular_estatisticas_gerais(registros):
         "vendas_acima_da_media": vendas_acima_da_media,
     }
 
-def imprimir_estatisticas(dict):
-    print("\n=== Estatisticas Gerais ===")
-    for chave, valor in dict.items():
-        print(f"{chave}: {valor}")
+def imprimir_estatisticas(estatisticas):
+    """Imprime as estatisticas gerais no console"""
+    print("\n=== ESTATISTICAS GERAIS ===")
+    for chave, valor in estatisticas.items():
+        nome_chave = chave.upper().replace("_", " ")
+        if isinstance(valor, float):
+            valor = round(valor, 2)
+        print(f"{nome_chave}: {valor}")
 
 def exportar_resultados(metricas, clientes, estatisticas):
     """Exporta os resultados do projeto em CSV e JSON."""
