@@ -254,7 +254,7 @@ def calcular_metricas(registros):
 
     return metricas
 
-def imprimir_metrica(metricas):
+def imprimir_metricas(metricas):
     """Exibe cada bloco de metricas no console em formato legivel."""
     for metrica, linhas in metricas.items():
         titulo = metrica.upper().replace("_", " ")
@@ -334,7 +334,7 @@ def calcular_estatisticas_gerais(registros):
     }
 
 def imprimir_estatisticas(estatisticas):
-    """Imprime as estatisticas gerais no console"""
+    """Imprime as estatisticas gerais no console."""
     print("\n=== ESTATISTICAS GERAIS ===")
     for chave, valor in estatisticas.items():
         nome_chave = chave.upper().replace("_", " ")
@@ -380,7 +380,7 @@ def main():
     dados = criar_colunas_derivadas(dados_limpo)
 
     metricas = calcular_metricas(dados)
-    imprimir_metrica(metricas)
+    imprimir_metricas(metricas)
 
     clientes = segmentar_clientes(dados)
 
