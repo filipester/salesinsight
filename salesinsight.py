@@ -254,7 +254,7 @@ def calcular_metricas(registros):
 
     return metricas
 
-def imprime_metrica(metricas):
+def imprimir_metrica(metricas):
     """Exibe cada bloco de metricas no console em formato legivel."""
     for metrica, linhas in metricas.items():
         titulo = metrica.upper().replace("_", " ")
@@ -372,7 +372,7 @@ def main():
     dados = criar_colunas_derivadas(dados_limpo)
 
     metricas = calcular_metricas(dados)
-    imprime_metrica(metricas)
+    imprimir_metrica(metricas)
 
     clientes = segmentar_clientes(dados)
 
