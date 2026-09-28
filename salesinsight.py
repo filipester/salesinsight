@@ -127,7 +127,9 @@ def limpar_dados(registros):
         linha["preco_unitario"] = float(linha["preco_unitario"])
 
     # 5. padronizar o nome do cliente com re.sub()
-        nome_limpo = re.sub(r"[^A-Za-z0-9_]", "", linha["cliente"])
+        nome = re.sub(r"[^A-Za-z]", "", linha['cliente']).capitalize()
+        codigo = re.sub(r"\D", "", linha['cliente'])
+        nome_limpo = nome + "_" + codigo
         linha["cliente"] = nome_limpo
         linha["cliente_fora_do_padrao"] = padrao_cliente.match(nome_limpo) is None
         limpos.append(linha)
@@ -188,11 +190,11 @@ def calcular_metricas(registros):
     Chaves minimas: por_mes, top_produtos, por_categoria, por_regiao. 
     """ 
     metricas = {}
-    acumulado = defaultdict(lambda: {"receita_total": 0, "quantidade": 0, "n_vendas": 0})
     # use dicionarios (ou defaultdict) para acumular receita_total, 
     # quantidade e numero de vendas por mes, produto, categoria e 
     # regiao; depois converta cada dicionario em uma lista ordenada 
     # de registros (dict.items() + sorted()) 
+    acumulado = defaultdict(lambda: {"receita_total": 0, "quantidade": 0, "n_vendas": 0})
     for linha in registros:
         mes = linha["mes"]
         acumulado[mes]["receita_total"] += linha["receita_total"]
@@ -200,6 +202,15 @@ def calcular_metricas(registros):
         acumulado[mes]["n_vendas"] += 1
     
     por_mes = [{"mes": mes, **dados} for mes, dados in sorted(acumulado.items())]
+
+    acum_trimestre = defaultdict(lambda: {"receita_total": 0, "quantidade": 0, "n_vendas": 0})
+    for linha in registros:
+        trimestre = linha["trimestre"]
+        acum_trimestre[trimestre]["receita_total"] += linha["receita_total"]
+        acum_trimestre[trimestre]["quantidade"] += linha["quantidade"]
+        acum_trimestre[trimestre]["n_vendas"] += 1
+
+    por_trimestre = [{"trimestre": trimestre, **dados} for trimestre, dados in sorted(acum_trimestre.items())]
 
     receita_por_produto = defaultdict(float)
     for linha in registros:
@@ -236,13 +247,14 @@ def calcular_metricas(registros):
     ]
 
     metricas["por_mes"] = por_mes
+    metricas["por_trimestre"] = por_trimestre
     metricas["top_produtos"] = top_produtos
     metricas["por_categoria"] = por_categoria
     metricas["por_regiao"] = por_regiao
 
     return metricas
 
-def imprime_metrica(metricas):
+def imprimir_metricas(metricas):
     """Exibe cada bloco de metricas no console em formato legivel."""
     for metrica, linhas in metricas.items():
         titulo = metrica.upper().replace("_", " ")
@@ -321,6 +333,15 @@ def calcular_estatisticas_gerais(registros):
         "vendas_acima_da_media": vendas_acima_da_media,
     }
 
+def imprimir_estatisticas(estatisticas):
+    """Imprime as estatisticas gerais no console."""
+    print("\n=== ESTATISTICAS GERAIS ===")
+    for chave, valor in estatisticas.items():
+        nome_chave = chave.upper().replace("_", " ")
+        if isinstance(valor, float):
+            valor = round(valor, 2)
+        print(f"{nome_chave}: {valor}")
+
 def exportar_resultados(metricas, clientes, estatisticas):
     """Exporta os resultados do projeto em CSV e JSON."""
     os.makedirs("outputs", exist_ok=True)
@@ -337,8 +358,8 @@ def exportar_resultados(metricas, clientes, estatisticas):
         escritor.writeheader()
         escritor.writerows(clientes)
 
-    serializavel = {chave: round(float(valor), 2)
-                     for chave, valor in estatisticas.items()}
+    serializavel = {chave: (round(valor, 2) if isinstance(valor, float) else valor)
+                    for chave, valor in estatisticas.items()}
     caminho = "outputs/estatisticas_gerais.json"
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(serializavel, f, indent=4, ensure_ascii=False)
@@ -350,17 +371,16 @@ def exportar_resultados(metricas, clientes, estatisticas):
 
 def main():
     """Executa o fluxo completo do SalesInsight PY."""
-    if not os.path.exists("vendas.csv"):
+    if not os.path.exists("vendas.csv"): # checa que já existe o vendas.csv, cria se não existir
         gerar_dataset_vendas()
     dataset = carregar_dataset('vendas.csv')
     inspecionar_dados(dataset)
 
-    dados_limpo, relatorio_limpeza = limpar_dados(dataset)
-
+    dados_limpo, _ = limpar_dados(dataset)
     dados = criar_colunas_derivadas(dados_limpo)
 
     metricas = calcular_metricas(dados)
-    imprime_metrica(metricas)
+    imprimir_metricas(metricas)
 
     clientes = segmentar_clientes(dados)
 
@@ -373,6 +393,9 @@ def main():
                               nome_saida="perfil_volume")
 
     estatisticas = calcular_estatisticas_gerais(dados)
+
+    imprimir_estatisticas(estatisticas)
+
     exportar_resultados(metricas, clientes, estatisticas)
 
     print("\n[CONCLUIDO] Fluxo finalizado com sucesso.")
