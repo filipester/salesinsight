@@ -349,8 +349,8 @@ def exportar_resultados(metricas, clientes, estatisticas):
         escritor.writeheader()
         escritor.writerows(clientes)
 
-    serializavel = {chave: round(float(valor), 2)
-                     for chave, valor in estatisticas.items()}
+    serializavel = {chave: (round(valor, 2) if isinstance(valor, float) else valor)
+                    for chave, valor in estatisticas.items()}
     caminho = "outputs/estatisticas_gerais.json"
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(serializavel, f, indent=4, ensure_ascii=False)
