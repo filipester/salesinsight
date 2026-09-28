@@ -127,7 +127,9 @@ def limpar_dados(registros):
         linha["preco_unitario"] = float(linha["preco_unitario"])
 
     # 5. padronizar o nome do cliente com re.sub()
-        nome_limpo = re.sub(r"[^A-Za-z0-9_]", "", linha["cliente"])
+        nome = re.sub(r"[^A-Za-z]", "", linha['cliente']).capitalize()
+        codigo = re.sub(r"\D", "", linha['cliente'])
+        nome_limpo = nome + "_" + codigo
         linha["cliente"] = nome_limpo
         linha["cliente_fora_do_padrao"] = padrao_cliente.match(nome_limpo) is None
         limpos.append(linha)
