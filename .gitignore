@@ -3,3 +3,4 @@
 *.json
 planejamento/roteiro-video.md
 __pycache__/
+*.mov
