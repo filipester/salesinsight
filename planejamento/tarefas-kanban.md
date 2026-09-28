@@ -5,15 +5,19 @@ enunciado. Cada cartão indica a branch em que foi desenvolvido.
 
 ## A fazer
 
-- [ ] Gravar o vídeo de demonstração (até 5 min)
-- [ ] Publicar o vídeo com acesso por link e colocar o link no README
-- [ ] Enviar os links do repositório e do vídeo no AVA
+_Nenhuma tarefa pendente._
 
 ## Fazendo
 
-- [ ] Integrar `docs/readme` → `develop` → `main`
+_Nenhuma tarefa em andamento._
 
 ## Concluído
+
+### Entrega
+- [x] Integrar `docs/readme` → `develop` → `main` — `main`
+- [x] Gravar e editar o vídeo de demonstração (até 5 min)
+- [x] Publicar o vídeo com acesso por link e colocar o link no README — `main`
+- [x] Enviar os links do repositório e do vídeo no AVA
 
 ### Estrutura e dados
 - [x] Criar repositório público e `.gitignore` — `main`
