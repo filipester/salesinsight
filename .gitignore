@@ -2,3 +2,4 @@
 *.csv
 *.json
 planejamento/roteiro-video.md
+__pycache__/
