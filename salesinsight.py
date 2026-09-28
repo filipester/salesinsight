@@ -333,6 +333,11 @@ def calcular_estatisticas_gerais(registros):
         "vendas_acima_da_media": vendas_acima_da_media,
     }
 
+def imprimir_estatisticas(dict):
+    print("\n=== Estatisticas Gerais ===")
+    for chave, valor in dict.items():
+        print(f"{chave}: {valor}")
+
 def exportar_resultados(metricas, clientes, estatisticas):
     """Exporta os resultados do projeto em CSV e JSON."""
     os.makedirs("outputs", exist_ok=True)
@@ -362,13 +367,12 @@ def exportar_resultados(metricas, clientes, estatisticas):
 
 def main():
     """Executa o fluxo completo do SalesInsight PY."""
-    if not os.path.exists("vendas.csv"):
+    if not os.path.exists("vendas.csv"): # checa que já existe o vendas.csv, cria se não existir
         gerar_dataset_vendas()
     dataset = carregar_dataset('vendas.csv')
     inspecionar_dados(dataset)
 
-    dados_limpo, relatorio_limpeza = limpar_dados(dataset)
-
+    dados_limpo, _ = limpar_dados(dataset)
     dados = criar_colunas_derivadas(dados_limpo)
 
     metricas = calcular_metricas(dados)
@@ -385,6 +389,9 @@ def main():
                               nome_saida="perfil_volume")
 
     estatisticas = calcular_estatisticas_gerais(dados)
+
+    imprimir_estatisticas(estatisticas)
+
     exportar_resultados(metricas, clientes, estatisticas)
 
     print("\n[CONCLUIDO] Fluxo finalizado com sucesso.")
